@@ -30,12 +30,13 @@ def show_game_screen(win):
 
 # Function to format card names for display and replace underscores with spaces
 def format_card_name(filename):
-    return filename.replace(".png", "").replace("_", " ").title() if filename else "None"
+    if filename:
+        formatted = filename.replace(".png", "")
+        formatted = formatted.replace("_", " ")
+        return formatted.title()
+    else:
+        return "None"
 
-# Function to check if a rule is a multi-card rule
-# This checks if the rule takes a single argument that is a list of cards   
-def is_multi_card_rule(rule):
-    return rule.__code__.co_argcount == 1 and 'cards' in rule.__code__.co_varnames[0]
 
 def setup_new_round(win):
 
@@ -60,6 +61,7 @@ def setup_new_round(win):
         widget.destroy()
 
     if win.guess_attempts == 0:
+        win.used_cards.clear()
         pattern_name, pattern_rule = random.choice(list(DEALER_PATTERNS.items()))
         win.dealer_pattern_name = pattern_name
         win.dealer_rule = pattern_rule
@@ -75,7 +77,14 @@ def setup_new_round(win):
     )
     win.guess_counter_label.place(x=10, y=10)
 
-    joined_guesses = ", ".join(win.guessed_patterns) if win.guessed_patterns else "None"
+    joined_guesses = "None" 
+    if win.guessed_patterns:
+        joined_guesses = ""
+        for guess in win.guessed_patterns:
+            if joined_guesses: 
+                joined_guesses += ", "
+            joined_guesses += guess
+
 
     win.guessed_patterns_label = tk.Label(
         win,
@@ -110,24 +119,51 @@ def setup_new_round(win):
     interaction_frame = tk.Frame(win, bg="white")
     interaction_frame.pack(padx=20, pady=20)
 
-    # Get all card filenames and filter out used cards
-    all_card_filenames = [f for f in os.listdir(CARD_DIR) if f.endswith(".png")]
-    available_cards = list(set(all_card_filenames) - win.used_cards)
 
+
+    # Get all card filenames and filter out used cards
+
+    all_card_filenames = []
+    for f in os.listdir(CARD_DIR):
+        if f.endswith(".png"):
+            all_card_filenames.append(f)
+
+    
+    available_cards = []
+    for card in all_card_filenames:
+        if card not in win.used_cards:
+            available_cards.append(card)
+
+ 
     # If there are not enough cards left, show a message and return
     if len(available_cards) < 4:
         messagebox.showinfo("No More Cards", "All cards have been used!")
         return
 
-    while True:
-        selected_cards = random.sample(available_cards, 4)
-        rule = win.dealer_rule
+
+
+    MAX_ATTEMPTS = 1000
+    attempts = 0
+    rule = win.dealer_rule
+    selected_cards = None
+
+    while attempts < MAX_ATTEMPTS:
+        attempts += 1
+        selected = random.sample(available_cards, 4)
         try:
-            is_match = rule(selected_cards) if is_multi_card_rule(rule) else any(rule(card) for card in selected_cards)
-        except Exception:
-            is_match = False
-        if is_match:
+            if any(rule(card) for card in selected):
+                selected_cards = selected
+                break
+        except Exception as e:
+            print("Error applying rule:", e)
             break
+
+    if selected_cards is None:
+        messagebox.showerror("No Valid Cards", "Couldn't find a valid set of cards. Resetting deck.")
+        win.used_cards.clear()  # Force reset
+        setup_new_round(win)
+        return
+
 
     win.used_cards.update(selected_cards)
     win.selected_cards = selected_cards
@@ -136,21 +172,34 @@ def setup_new_round(win):
     print("Dealer pattern:", win.dealer_pattern_name)
     print("Selected cards:", selected_cards)
 
-    # Check which cards match the dealer's rule
-    rule = win.dealer_rule
-    if is_multi_card_rule(rule):
-        matching_cards = selected_cards if rule(selected_cards) else []
-    else:
-        matching_cards = [card for card in selected_cards if rule(card)]
+    # Find matching cards based on the dealer's rule
+    matching_cards = []
+    for card in selected_cards:
+        if rule(card):
+            matching_cards.append(card)
 
-    dealer_choice = random.choice(matching_cards) if matching_cards else None
+    dealer_choice = None
+    if matching_cards:
+        dealer_choice = random.choice(matching_cards)
+
     win.dealer_choice = dealer_choice
 
     if dealer_choice:
         win.dealer_choices.append(dealer_choice)
 
-    all_choices = [format_card_name(card) for card in win.dealer_choices]
-    joined_names = ", ".join(all_choices) if all_choices else "None"
+    all_choices = []
+    for card in win.dealer_choices:
+        all_choices.append(format_card_name(card))
+
+    joined_names = "None"
+    if all_choices:
+        joined_names = ""
+        for name in all_choices:
+            if joined_names:
+                joined_names += ", "
+            joined_names += name
+
+
 
     win.guessed_cards_label = tk.Label(
         win,
@@ -163,14 +212,20 @@ def setup_new_round(win):
 
 
     # display the cards
-    for i, card_file in enumerate(selected_cards):
+    for i in range(len(selected_cards)):
+        card_file = selected_cards[i]
         card_path = os.path.join(CARD_DIR, card_file)
         img = Image.open(card_path).resize((CARD_WIDTH, CARD_HEIGHT))
         photo = ImageTk.PhotoImage(img)
         win.card_images.append(photo)
 
+
         # highlight the dealer's choice card with a green border         
-        border_color = "green" if card_file == dealer_choice else "white"
+        border_color = "white"
+        if card_file == dealer_choice:
+            border_color = "green"
+        
+        
         card_label = tk.Label(
             card_frame,
             image=photo,
@@ -272,6 +327,7 @@ def setup_new_round(win):
             remaining = 3 - win.guess_attempts
             try_again_sound.play()
             messagebox.showwarning("Try Again", f"Incorrect. You have {remaining} guess{'es' if remaining > 1 else ''} left.")
+            win.used_cards.update(win.selected_cards)  # prevent repeats during same round
             setup_new_round(win)
 
     # Guess button formatting

@@ -24,9 +24,16 @@ def show_game_screen(win):
     setup_new_round(win)
 
 def format_card_name(filename):
-    return filename.replace(".png", "").replace("_", " ").title() if filename else "None"
+    if filename:
+        name = filename.replace(".png", "").replace("_", " ").title()
+        return name
+    else:
+        return "None"
 
 def is_multi_card_rule(rule):
+    # Expanded without __code__.co_argcount (you might want to change logic if needed)
+    # Here just assume if callable and accepts one argument named 'cards'
+    # For simplicity, we'll keep original:
     return rule.__code__.co_argcount == 1 and 'cards' in rule.__code__.co_varnames[0]
 
 def setup_new_round(win):
@@ -39,20 +46,28 @@ def setup_new_round(win):
         del win.confetti_after_id
 
     # Destroy any lingering confetti canvases
-    for child in win.winfo_children():
-        if isinstance(child, tk.Canvas) and child not in win.card_images:
+    children = win.winfo_children()
+    for child in children:
+        if isinstance(child, tk.Canvas) and child not in getattr(win, "card_images", []):
             try:
                 child.destroy()
             except Exception:
                 pass
 
-
-    for widget in win.winfo_children():
-        widget.destroy()
+    # Destroy all widgets before setting up new round
+    children = win.winfo_children()
+    for widget in children:
+        try:
+            widget.destroy()
+        except Exception:
+            pass
 
     # Reset the dealer pattern if no guesses have been made
     if win.guess_attempts == 0:
-        pattern_name, pattern_rule = random.choice(list(DEALER_PATTERNS.items()))
+        patterns = list(DEALER_PATTERNS.items())
+        index = random.randint(0, len(patterns) - 1)
+        pattern_name = patterns[index][0]
+        pattern_rule = patterns[index][1]
         win.dealer_pattern_name = pattern_name
         win.dealer_rule = pattern_rule
         win.dealer_choices.clear()
@@ -60,19 +75,26 @@ def setup_new_round(win):
     # Display the number of guess attempts
     win.guess_counter_label = tk.Label(
         win,
-        text=f"Guesses: {win.guess_attempts}/3",
+        text="Guesses: " + str(win.guess_attempts) + "/3",
         font=("Georgia", 12, "bold"),
         bg="white",
         fg="#555"
     )
     win.guess_counter_label.place(x=10, y=10)
 
-    # Display the guessed patterns
-    joined_guesses = ", ".join(win.guessed_patterns) if win.guessed_patterns else "None"
+    # Display the guessed patterns (expanded join)
+    if win.guessed_patterns:
+        joined_guesses = ""
+        for i in range(len(win.guessed_patterns)):
+            joined_guesses += win.guessed_patterns[i]
+            if i != len(win.guessed_patterns) - 1:
+                joined_guesses += ", "
+    else:
+        joined_guesses = "None"
 
     win.guessed_patterns_label = tk.Label(
         win,
-        text=f"Guessed Patterns: {joined_guesses}",
+        text="Guessed Patterns: " + joined_guesses,
         font=("Georgia", 12, "bold"),
         bg="white",
         fg="#555"
@@ -96,73 +118,119 @@ def setup_new_round(win):
     )
     instructions.pack(pady=10)
 
-    # set up frames for card display and interaction
+    # Frames for card display and interaction
     card_frame = tk.Frame(win, bg="white")
     card_frame.pack(pady=40)
 
     interaction_frame = tk.Frame(win, bg="white")
     interaction_frame.pack(padx=20, pady=20)
 
-    # Load all card filenames
-    card_filenames = [f for f in os.listdir(CARD_DIR) if f.endswith(".png")]
+    # Load all card filenames (expanded)
+    card_filenames = []
+    all_files = os.listdir(CARD_DIR)
+    for f in all_files:
+        if f.endswith(".png"):
+            card_filenames.append(f)
 
     if len(card_filenames) < 4:
         messagebox.showinfo("No More Cards", "All cards have been used!")
         return
 
+    # Loop until a valid selection of cards matching dealer rule is found
     while True:
         selected_cards = random.sample(card_filenames, 4)
         rule = win.dealer_rule
-        try:
-            is_match = rule(selected_cards) if is_multi_card_rule(rule) else any(rule(card) for card in selected_cards)
-        except Exception:
+        if is_multi_card_rule(rule):
+            try:
+                is_match = rule(selected_cards)
+            except Exception:
+                is_match = False
+        else:
             is_match = False
+            for card in selected_cards:
+                try:
+                    if rule(card):
+                        is_match = True
+                        break
+                except Exception:
+                    pass
         if is_match:
             break
 
     # Update used cards and selected cards
-    win.used_cards.update(selected_cards)
+    for card in selected_cards:
+        win.used_cards.add(card)
     win.selected_cards = selected_cards
     win.card_images = []
-
 
     print("Dealer pattern:", win.dealer_pattern_name)
     print("Selected cards:", selected_cards)
 
     rule = win.dealer_rule
     if is_multi_card_rule(rule):
-        matching_cards = selected_cards if rule(selected_cards) else []
+        try:
+            if rule(selected_cards):
+                matching_cards = selected_cards
+            else:
+                matching_cards = []
+        except Exception:
+            matching_cards = []
     else:
-        matching_cards = [card for card in selected_cards if rule(card)]
+        matching_cards = []
+        for card in selected_cards:
+            try:
+                if rule(card):
+                    matching_cards.append(card)
+            except Exception:
+                pass
 
-    dealer_choice = random.choice(matching_cards) if matching_cards else None
+    if matching_cards:
+        dealer_choice = random.choice(matching_cards)
+    else:
+        dealer_choice = None
     win.dealer_choice = dealer_choice
 
     if dealer_choice:
         win.dealer_choices.append(dealer_choice)
 
-    all_choices = [format_card_name(card) for card in win.dealer_choices]
-    joined_names = ", ".join(all_choices) if all_choices else "None"
+    # Expanded formatting dealer choices
+    all_choices = []
+    for card in win.dealer_choices:
+        formatted_name = format_card_name(card)
+        all_choices.append(formatted_name)
 
-    # Display the dealer's previous picks label
+    if all_choices:
+        joined_names = ""
+        for i in range(len(all_choices)):
+            joined_names += all_choices[i]
+            if i != len(all_choices) - 1:
+                joined_names += ", "
+    else:
+        joined_names = "None"
+
     win.guessed_cards_label = tk.Label(
         win,
-        text=f"Dealer Picks: {joined_names}",
+        text="Dealer Picks: " + joined_names,
         font=("Georgia", 12, "bold"),
         bg="white",
         fg="#555"
     )
     win.guessed_cards_label.place(x=10, y=500)
 
-    # display the cards
-    for i, card_file in enumerate(selected_cards):
+    # Display cards with images and highlight dealer choice
+    for i in range(len(selected_cards)):
+        card_file = selected_cards[i]
         card_path = os.path.join(CARD_DIR, card_file)
-        img = Image.open(card_path).resize((CARD_WIDTH, CARD_HEIGHT))
+        img = Image.open(card_path)
+        img = img.resize((CARD_WIDTH, CARD_HEIGHT))
         photo = ImageTk.PhotoImage(img)
         win.card_images.append(photo)
 
-        # highlight the dealer's choice card with a green border 
-        border_color = "green" if card_file == dealer_choice else "white"
+        if card_file == dealer_choice:
+            border_color = "green"
+        else:
+            border_color = "white"
+
         card_label = tk.Label(
             card_frame,
             image=photo,
@@ -178,11 +246,16 @@ def setup_new_round(win):
     guess_label.grid(row=0, column=0, padx=5)
 
     guess_var = tk.StringVar()
-    guess_menu = ttk.Combobox(interaction_frame, textvariable=guess_var, state="readonly",
-                          values=list(DEALER_PATTERNS.keys()), font=("Georgia", 14), width=25)
+    guess_menu = ttk.Combobox(
+        interaction_frame,
+        textvariable=guess_var,
+        state="readonly",
+        values=list(DEALER_PATTERNS.keys()),
+        font=("Georgia", 14),
+        width=25
+    )
     guess_menu.grid(row=0, column=1, padx=10)
 
-    # when the user successfully guesses within 3 tries, trigger confetti pieces on screen
     def show_confetti():
         confetti_pieces = []
         colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#9B59B6", "#E67E22"]
@@ -193,55 +266,52 @@ def setup_new_round(win):
             size = random.randint(5, 10)
             color = random.choice(colors)
             confetti = tk.Canvas(win, width=size, height=size, bg="white", highlightthickness=0)
-            # confetti.place(x=x, y=y)
-            if str(confetti) in win.children or confetti.winfo_exists():
-                confetti.place(x=x, y=y)
-
-
+            confetti.place(x=x, y=y)
             confetti.create_rectangle(0, 0, size, size, fill=color, outline="")
             confetti_pieces.append([confetti, x, y, size, random.randint(2, 5)])
 
         def animate():
             all_off_screen = True
-            for i, (confetti, x, y, size, speed) in enumerate(confetti_pieces):
+            for i in range(len(confetti_pieces)):
+                confetti, x, y, size, speed = confetti_pieces[i]
                 y += speed
-                # confetti.place(x=x, y=y)
-                if str(confetti) in win.children or confetti.winfo_exists():
-                    confetti.place(x=x, y=y)
-
+                confetti.place(x=x, y=y)
                 confetti_pieces[i][2] = y
                 if y < win.winfo_height():
                     all_off_screen = False
             if not all_off_screen:
                 win.after(30, animate)
             else:
-                for confetti, _, _, _, _ in confetti_pieces:
-                    # confetti.destroy()
+                for i in range(len(confetti_pieces)):
+                    confetti = confetti_pieces[i][0]
                     if confetti.winfo_exists():
                         confetti.destroy()
 
-
         animate()
 
-    # function for checking if the user's guess matches the dealer's pattern
     def check_guess():
         guess = guess_var.get()
-        # if the user doesn't select a pattern, show warning message
         if not guess:
             messagebox.showwarning("No Guess", "Please select a pattern to guess.")
             return
 
         win.guess_attempts += 1
-        win.guess_counter_label.config(text=f"Guesses: {win.guess_attempts}/3")
+        win.guess_counter_label.config(text="Guesses: " + str(win.guess_attempts) + "/3")
 
-        # append the guess to the list of guessed patterns
-        # this allows the user to see their previous guesses
+        # Append guess to guessed_patterns
         win.guessed_patterns.append(guess)
-        win.guessed_patterns_label.config(
-        text=f"Guessed Patterns: {', '.join(win.guessed_patterns)}"
-        )
 
-        # if the guess matches the dealer's pattern, show confetti and reset for next round
+        # Update guessed_patterns_label text (expanded join)
+        if win.guessed_patterns:
+            text = ""
+            for i in range(len(win.guessed_patterns)):
+                text += win.guessed_patterns[i]
+                if i != len(win.guessed_patterns) - 1:
+                    text += ", "
+        else:
+            text = "None"
+        win.guessed_patterns_label.config(text="Guessed Patterns: " + text)
+
         if guess == win.dealer_pattern_name:
             show_confetti()
             correct_sound.play()
@@ -249,24 +319,26 @@ def setup_new_round(win):
             win.guess_attempts = 0
             win.guessed_patterns.clear()
             setup_new_round(win)
-
-        # if the guess does not match the dealer's pattern, check how many attempts have been made and show message
         elif win.guess_attempts >= 3:
             game_over_sound.play()
-            messagebox.showinfo("Game Over", f"The correct pattern was: {win.dealer_pattern_name}")
+            messagebox.showinfo("Game Over", "The correct pattern was: " + win.dealer_pattern_name)
             win.guess_attempts = 0
             win.guessed_patterns.clear()
             setup_new_round(win)
-
-        # if the guess is incorrect and less than 3 attempts have been made, show try again message
         else:
             remaining = 3 - win.guess_attempts
             try_again_sound.play()
-            messagebox.showwarning("Try Again", f"Incorrect. You have {remaining} guess{'es' if remaining > 1 else ''} left.")
+            messagebox.showwarning(
+                "Try Again",
+                "Incorrect. You have " + str(remaining) + " guess" + ("es" if remaining > 1 else "") + " left."
+            )
             setup_new_round(win)
 
-    # guess button
-    guess_btn = tk.Button(interaction_frame, text="Submit Guess", font=("Georgia", 12), bg="#FFD700", command=check_guess)
+    guess_btn = tk.Button(
+        interaction_frame,
+        text="Submit Guess",
+        font=("Georgia", 12),
+        bg="#FFD700",
+        command=check_guess
+    )
     guess_btn.grid(row=0, column=2, padx=10)
-
-

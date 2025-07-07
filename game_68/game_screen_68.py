@@ -146,7 +146,13 @@ def setup_new_round(win):
     if dealer_choice:
         win.dealer_choices.append(dealer_choice)
 
-    all_choices = [format_card_name(card) for card in win.dealer_choices]
+    all_choices = []
+
+    for card in win.dealer_choices:
+        formatted_name = format_card_name(card)
+        all_choices.append(formatted_name)
+
+        
     joined_names = ", ".join(all_choices) if all_choices else "None"
 
     # Display the dealer's previous picks label
@@ -260,6 +266,3 @@ def setup_new_round(win):
     # guess button
     guess_btn = tk.Button(interaction_frame, text="Submit Guess", font=("Georgia", 12), bg="#FFD700", command=check_guess)
     guess_btn.grid(row=0, column=2, padx=10)
-
-
-

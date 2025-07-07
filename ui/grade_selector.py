@@ -82,14 +82,11 @@ def launch_main_menu():
     )
     
 
-    
-
-
-    # Layout
+    # layout of the main menu buttons for grades and instructions
     btn_k2.grid(row=0, column=0, padx=15, pady=10)
     btn_35.grid(row=0, column=1, padx=15, pady=10)
     btn_68.grid(row=0, column=2, padx=15, pady=10)
-    btn_instructions.grid(row=1, column=1, pady=10)  # Centered under grade buttons
+    btn_instructions.grid(row=1, column=1, pady=10)  
 
     root.mainloop()
 
@@ -100,11 +97,11 @@ def launch_k2_game(root):
     run_k2_game()   # Launch the K-2 game window
 
 def launch_35_game(root):
-    root.destroy()  # Close the grade selector window
-    main_menu_sound.stop()  # Stop the main menu sound
+    root.destroy()  
+    main_menu_sound.stop()  
     run_35_game()   # Launch the 3-5 game window
 
 def launch_68_game(root):
-    root.destroy()  # Close the grade selector window
-    main_menu_sound.stop()  # Stop the main menu sound
+    root.destroy()  
+    main_menu_sound.stop()  
     run_68_game()   # Launch the 6-8 game window

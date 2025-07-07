@@ -1,6 +1,3 @@
-# k2_game/logic_k2.py
-
-
 def is_red(card):
     return card.endswith("hearts.png") or card.endswith("diamonds.png")
 
@@ -38,7 +35,7 @@ DEALER_PATTERNS = {
     "All Clubs": is_clubs,
     "All Kings": is_king,
     "All Queens": is_queen,
-    "All Jacks": is_jack,
+    "All Jacks": is_jack
 }
 
 
