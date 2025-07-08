@@ -3,14 +3,23 @@ from tkinter import messagebox
 from tkinter import ttk
 import random
 import os
+import sys
 from PIL import Image, ImageTk
 from game_68.logic_68 import DEALER_PATTERNS
 import pygame
 
+def resource_path(relative_path):
+    # Get absolute path to resource, works for dev and for PyInstaller .exe
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+# Initialize pygame mixer for sound effects
 pygame.mixer.init()
-correct_sound = pygame.mixer.Sound('assets/sounds/correct_guess.wav')
-try_again_sound = pygame.mixer.Sound('assets/sounds/try_again.mp3')
-game_over_sound = pygame.mixer.Sound('assets/sounds/game_over.wav')
+correct_sound = pygame.mixer.Sound(resource_path('assets/sounds/correct_guess.wav'))
+try_again_sound = pygame.mixer.Sound(resource_path('assets/sounds/try_again.mp3'))
+game_over_sound = pygame.mixer.Sound(resource_path('assets/sounds/game_over.wav'))
+
 
 CARD_WIDTH = 100
 CARD_HEIGHT = 140
@@ -152,7 +161,7 @@ def setup_new_round(win):
         formatted_name = format_card_name(card)
         all_choices.append(formatted_name)
 
-        
+
     joined_names = ", ".join(all_choices) if all_choices else "None"
 
     # Display the dealer's previous picks label
@@ -167,7 +176,7 @@ def setup_new_round(win):
 
     # Display the selected cards
     for i, card_file in enumerate(selected_cards):
-        card_path = os.path.join(CARD_DIR, card_file)
+        card_path = resource_path(os.path.join(CARD_DIR, card_file))
         img = Image.open(card_path).resize((CARD_WIDTH, CARD_HEIGHT))
         photo = ImageTk.PhotoImage(img)
         win.card_images.append(photo)

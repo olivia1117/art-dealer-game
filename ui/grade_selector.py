@@ -16,9 +16,17 @@ from game_68.main_68 import run_68_game
 from game_68.game_screen_68 import show_game_screen
 
 import pygame
+import sys 
+import os
+
+def resource_path(relative_path):
+    # Get absolute path to resource, works for dev and for PyInstaller .exe
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 pygame.mixer.init()
-main_menu_sound = pygame.mixer.Sound('assets/sounds/main_menu.wav')
+main_menu_sound = pygame.mixer.Sound(resource_path('assets/sounds/main_menu.wav'))
 
 
 def launch_main_menu():
@@ -29,7 +37,7 @@ def launch_main_menu():
     root.resizable(True, True) #this allows for resizing the window 
 
     # Load and display background
-    bg_image = Image.open("assets/background.png")
+    bg_image = Image.open(resource_path("assets/background.png"))
     bg_image = bg_image.resize((800, 600))  
     bg_photo = ImageTk.PhotoImage(bg_image)
 

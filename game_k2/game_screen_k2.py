@@ -3,20 +3,30 @@ from tkinter import messagebox
 from tkinter import ttk
 import random
 import os
+import sys
 from PIL import Image, ImageTk
 from game_k2.logic_k2 import DEALER_PATTERNS
 import pygame
 
 # Initialize pygame mixer for sound effects
+def resource_path(relative_path):
+    # Get absolute path to resource, works for dev and for PyInstaller .exe
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+
+# Initialize pygame mixer for sound effects
 pygame.mixer.init()
-correct_sound = pygame.mixer.Sound('assets/sounds/correct_guess.wav')
-try_again_sound = pygame.mixer.Sound('assets/sounds/try_again.mp3')
-game_over_sound = pygame.mixer.Sound('assets/sounds/game_over.wav')
+correct_sound = pygame.mixer.Sound(resource_path('assets/sounds/correct_guess.wav'))
+try_again_sound = pygame.mixer.Sound(resource_path('assets/sounds/try_again.mp3'))
+game_over_sound = pygame.mixer.Sound(resource_path('assets/sounds/game_over.wav'))
+
 
 # Constants for card dimensions and directory
 CARD_WIDTH = 100
 CARD_HEIGHT = 140
 CARD_DIR = "assets/deck"
+
 
 # show the game screen
 def show_game_screen(win):
@@ -77,6 +87,8 @@ def setup_new_round(win):
     )
     win.guess_counter_label.place(x=10, y=10)
 
+    # keep track of previous guesses for the user to see
+    
     joined_guesses = "None" 
     if win.guessed_patterns:
         joined_guesses = ""
@@ -122,6 +134,8 @@ def setup_new_round(win):
 
 
     # Get all card filenames and filter out used cards
+    # this is to make sure that each card is only used once
+    # until the deck is reset
 
     all_card_filenames = []
     for f in os.listdir(CARD_DIR):
@@ -140,7 +154,10 @@ def setup_new_round(win):
         messagebox.showinfo("No More Cards", "All cards have been used!")
         return
 
-
+    # Randomly select 4 cards that match the dealer's rule
+    # from the available deck as long as the rule is met and it 
+    # doesn't take too long to find a valid set
+    # otherwise it resets the deck 
 
     MAX_ATTEMPTS = 1000
     attempts = 0
@@ -173,6 +190,9 @@ def setup_new_round(win):
     print("Selected cards:", selected_cards)
 
     # Find matching cards based on the dealer's rule
+    # then checks which selected cards match the dealer's rule
+    # and dealer's choice is stored
+
     matching_cards = []
     for card in selected_cards:
         if rule(card):
@@ -211,10 +231,10 @@ def setup_new_round(win):
     win.guessed_cards_label.place(x=10, y=500)
 
 
-    # display the cards
+    # display the cards on the screen and format it correctly
     for i in range(len(selected_cards)):
         card_file = selected_cards[i]
-        card_path = os.path.join(CARD_DIR, card_file)
+        card_path = resource_path(os.path.join(CARD_DIR, card_file))
         img = Image.open(card_path).resize((CARD_WIDTH, CARD_HEIGHT))
         photo = ImageTk.PhotoImage(img)
         win.card_images.append(photo)
